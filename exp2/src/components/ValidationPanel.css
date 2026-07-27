@@ -1,0 +1,37 @@
+.validation-panel {
+  margin-top: 14px;
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  padding: 16px;
+  background: #fafafa;
+}
+
+.validation-section {
+  margin-bottom: 14px;
+}
+
+.validation-section:last-child {
+  margin-bottom: 0;
+}
+
+.validation-group {
+  margin-top: 10px;
+}
+
+.v-platform {
+  display: block;
+  font-weight: 700;
+}
+
+.v-msg {
+  margin-left: 10px;
+  color: #374151;
+}
+
+.validation-section.errors {
+  color: #b91c1c;
+}
+
+.validation-section.warnings {
+  color: #92400e;
+}

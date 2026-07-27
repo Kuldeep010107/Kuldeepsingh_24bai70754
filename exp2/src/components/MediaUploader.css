@@ -1,0 +1,26 @@
+.media-uploader {
+  margin-bottom: 18px;
+}
+
+.media-list {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.media-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+}
+
+.media-item button {
+  border: none;
+  background: transparent;
+  color: #2563eb;
+  font-weight: 600;
+  cursor: pointer;
+}
