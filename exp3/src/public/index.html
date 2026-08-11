@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JWT Auth Demo</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f6fb; margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .card { width: 360px; border-radius: 14px; background: white; box-shadow: 0 18px 40px rgba(0,0,0,.08); padding: 28px; }
+    h1 { margin: 0 0 18px; font-size: 24px; color: #111; }
+    label { display: block; margin: 14px 0 6px; font-size: 14px; color: #444; }
+    input { width: 100%; padding: 10px 12px; border: 1px solid #d7dce9; border-radius: 8px; font-size: 14px; }
+    button { width: 100%; margin-top: 18px; padding: 12px; border: none; border-radius: 10px; background: #3b82f6; color: white; font-size: 15px; cursor: pointer; }
+    button:hover { background: #2563eb; }
+    .tabs { display: flex; justify-content: space-between; margin-bottom: 18px; }
+    .tab { width: 48%; padding: 10px; text-align: center; border-radius: 10px; cursor: pointer; background: #eef2ff; color: #1e3a8a; }
+    .tab.active { background: #3b82f6; color: white; }
+    .message { margin-top: 16px; font-size: 14px; color: #1f2937; min-height: 20px; }
+    .profile { margin-top: 18px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px; border-radius: 10px; }
+    .profile strong { display: block; margin-bottom: 4px; }
+    .section { margin-top: 18px; }
+    .section-title { margin-bottom: 10px; color: #334155; font-weight: 700; }
+    .output { white-space: pre-wrap; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 10px; font-size: 13px; color: #0f172a; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="tabs">
+      <div id="tab-login" class="tab active">Login</div>
+      <div id="tab-register" class="tab">Register</div>
+    </div>
+    <h1 id="form-title">Login</h1>
+
+    <label for="email">Email</label>
+    <input id="email" type="email" placeholder="name@example.com" />
+
+    <label for="password">Password</label>
+    <input id="password" type="password" placeholder="••••••••" />
+
+    <button id="submit-button">Login</button>
+    <div class="message" id="message"></div>
+
+  </div>
+
+  <script>
+    const tabLogin = document.getElementById('tab-login');
+    const tabRegister = document.getElementById('tab-register');
+    const formTitle = document.getElementById('form-title');
+    const submitButton = document.getElementById('submit-button');
+    const messageEl = document.getElementById('message');
+    let mode = 'login';
+    let accessToken = '';
+    let refreshToken = '';
+
+    const setMessage = (text, success = true) => {
+      messageEl.textContent = text;
+      messageEl.style.color = success ? '#047857' : '#b91c1c';
+    };
+
+    const switchMode = (newMode) => {
+      mode = newMode;
+      formTitle.textContent = newMode === 'login' ? 'Login' : 'Register';
+      submitButton.textContent = newMode === 'login' ? 'Login' : 'Register';
+      tabLogin.classList.toggle('active', newMode === 'login');
+      tabRegister.classList.toggle('active', newMode === 'register');
+      setMessage('');
+    };
+
+    tabLogin.addEventListener('click', () => switchMode('login'));
+    tabRegister.addEventListener('click', () => switchMode('register'));
+
+    submitButton.addEventListener('click', async () => {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value.trim();
+      if (!email || !password) {
+        setMessage('Email and password are required.', false);
+        return;
+      }
+
+      const body = { email, password };
+      const url = mode === 'login' ? '/auth/login' : '/auth/register';
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setMessage(data.error || 'Request failed.', false);
+        return;
+      }
+
+      if (mode === 'register') {
+        setMessage('Registered successfully. Please login.');
+        switchMode('login');
+        return;
+      }
+
+      accessToken = data.accessToken;
+      refreshToken = data.refreshToken;
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('refreshToken', refreshToken);
+      localStorage.setItem('userEmail', email);
+      setMessage('Logged in successfully. Redirecting...');
+      window.location.href = '/dashboard.html';
+    });
+  </script>
+</body>
+</html>

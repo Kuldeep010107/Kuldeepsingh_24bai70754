@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eef2ff; color: #0f172a; }
+    header { display: flex; justify-content: space-between; align-items: center; padding: 24px; background: #3b82f6; color: #fff; }
+    header h1 { margin: 0; font-size: 24px; }
+    header button { border: none; padding: 10px 18px; border-radius: 10px; background: #f97316; color: white; cursor: pointer; font-size: 14px; }
+    main { max-width: 1200px; margin: 24px auto; padding: 0 24px; }
+    .grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .card { background: white; border-radius: 18px; box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08); padding: 22px; }
+    .card h2 { margin-top: 0; font-size: 20px; color: #1e293b; }
+    .status { margin: 12px 0 0; padding: 10px 14px; border-radius: 12px; background: #e0f2fe; color: #0369a1; display: inline-block; }
+    .profile-info { line-height: 1.8; }
+    .users-list, .posts-list { margin: 0; padding: 0; list-style: none; }
+    .users-list li, .posts-list li { padding: 14px 0; border-bottom: 1px solid #e2e8f0; }
+    .users-list li:last-child, .posts-list li:last-child { border-bottom: none; }
+    .post-title { margin: 0 0 6px; font-size: 16px; color: #0f172a; }
+    .post-body { margin: 0; color: #475569; }
+    .no-data { color: #64748b; font-size: 14px; }
+    .button-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
+    .button-row a { text-decoration: none; padding: 10px 16px; border-radius: 10px; background: #3b82f6; color: white; display: inline-block; }
+    .button-row a.secondary { background: #94a3b8; }
+    .error { color: #b91c1c; margin-top: 14px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Dashboard</h1>
+      <div class="status" id="role-badge">Loading role...</div>
+    </div>
+    <button id="logout-button">Logout</button>
+  </header>
+  <main>
+    <div class="card profile-card">
+      <h2>Your Profile</h2>
+      <div class="profile-info" id="profile-info">Loading profile...</div>
+    </div>
+
+    <div class="card">
+      <h2>Role Credentials</h2>
+      <ul class="users-list">
+        <li><strong>Admin</strong><br/>admin@example.com / Admin@123</li>
+        <li><strong>Editor</strong><br/>editor@example.com / Editor@123</li>
+        <li><strong>Viewer</strong><br/>viewer@example.com / Viewer@123</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Users</h2>
+      <ul class="users-list" id="users-list"></ul>
+      <p class="no-data" id="users-empty" style="display:none;">No users available.</p>
+    </div>
+
+    <div class="card" id="create-post-card" style="display:none;">
+      <h2>Create Post</h2>
+      <label for="post-title" style="display:block; margin-bottom:8px; font-weight:600;">Title</label>
+      <input id="post-title" type="text" placeholder="Post title" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:10px; margin-bottom:12px;" />
+      <label for="post-body" style="display:block; margin-bottom:8px; font-weight:600;">Body</label>
+      <textarea id="post-body" placeholder="Post body" style="width:100%; min-height:120px; padding:10px; border:1px solid #cbd5e1; border-radius:10px;"></textarea>
+      <button id="create-post-button" style="margin-top:14px; width:100%; background:#10b981;">Create Post</button>
+      <p class="no-data" id="create-post-note" style="display:none;">You can create posts as admin or editor.</p>
+    </div>
+
+    <div class="card">
+      <h2>Posts</h2>
+      <ul class="posts-list" id="posts-list"></ul>
+      <p class="no-data" id="posts-empty" style="display:none;">No posts available.</p>
+    </div>
+
+    <div class="card">
+      <h2>Admin Info</h2>
+      <p id="admin-note">This page loads protected user and post data after login. Admin may view all users and post details.</p>
+      <div class="button-row">
+        <a href="/" class="secondary">Back to Login</a>
+      </div>
+      <p class="error" id="dashboard-error"></p>
+    </div>
+  </main>
+
+  <script>
+    const profileInfo = document.getElementById('profile-info');
+    const roleBadge = document.getElementById('role-badge');
+    const usersList = document.getElementById('users-list');
+    const usersEmpty = document.getElementById('users-empty');
+    const postsList = document.getElementById('posts-list');
+    const postsEmpty = document.getElementById('posts-empty');
+    const dashboardError = document.getElementById('dashboard-error');
+    const logoutButton = document.getElementById('logout-button');
+
+    const accessToken = localStorage.getItem('accessToken');
+    const refreshToken = localStorage.getItem('refreshToken');
+
+    if (!accessToken) {
+      window.location.href = '/';
+    }
+
+    const handleLogout = () => {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      window.location.href = '/';
+    };
+
+    logoutButton.addEventListener('click', async () => {
+      if (refreshToken) {
+        await fetch('/auth/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken }),
+        });
+      }
+      handleLogout();
+    });
+
+    const setError = (message) => {
+      dashboardError.textContent = message;
+      roleBadge.textContent = 'Error';
+      roleBadge.style.background = '#fee2e2';
+      roleBadge.style.color = '#991b1b';
+    };
+
+    const fetchProfile = async () => {
+      const res = await fetch('/auth/profile', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!res.ok) {
+        setError('Unable to load profile. Please login again.');
+        return null;
+      }
+      return res.json();
+    };
+
+    const fetchUsers = async () => {
+      const res = await fetch('/users', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!res.ok) {
+        throw new Error('Failed to load users');
+      }
+      return res.json();
+    };
+
+    const fetchPosts = async () => {
+      const res = await fetch('/posts', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!res.ok) {
+        throw new Error('Failed to load posts');
+      }
+      return res.json();
+    };
+
+    const createPost = async (title, body) => {
+      const res = await fetch('/posts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ title, body }),
+      });
+      if (!res.ok) {
+        throw new Error('Failed to create post');
+      }
+      return res.json();
+    };
+
+    const updatePost = async (postId, title, body) => {
+      const res = await fetch(`/posts/${postId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ title, body }),
+      });
+      if (!res.ok) {
+        throw new Error('Failed to update post');
+      }
+      return res.json();
+    };
+
+    const deletePost = async (postId) => {
+      const res = await fetch(`/posts/${postId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      if (!res.ok) {
+        throw new Error('Failed to delete post');
+      }
+      return res.json();
+    };
+
+    const renderUsers = (users) => {
+      usersList.innerHTML = '';
+      if (!users.length) {
+        usersEmpty.style.display = 'block';
+        return;
+      }
+      usersEmpty.style.display = 'none';
+      users.forEach((user) => {
+        const li = document.createElement('li');
+        li.innerHTML = `<strong>${user.email}</strong><br/>Role: ${user.role}`;
+        usersList.appendChild(li);
+      });
+    };
+
+    const renderPosts = (posts, role) => {
+      postsList.innerHTML = '';
+      if (!posts.length) {
+        postsEmpty.style.display = 'block';
+        return;
+      }
+      postsEmpty.style.display = 'none';
+      posts.forEach((post) => {
+        const li = document.createElement('li');
+        const titleEl = document.createElement('p');
+        titleEl.className = 'post-title';
+        titleEl.textContent = post.title;
+
+        const bodyEl = document.createElement('p');
+        bodyEl.className = 'post-body';
+        bodyEl.textContent = post.body;
+
+        const authorEl = document.createElement('small');
+        authorEl.textContent = `Author: ${post.author}`;
+
+        const actionsWrapper = document.createElement('div');
+        actionsWrapper.style.marginTop = '12px';
+
+        if (role === 'admin' || role === 'editor') {
+          const editButton = document.createElement('button');
+          editButton.textContent = 'Edit';
+          editButton.style.cssText = 'margin-right:8px; padding:6px 10px; border:none; border-radius:8px; background:#2563eb; color:white; cursor:pointer;';
+          editButton.addEventListener('click', async () => {
+            const title = prompt('Edit title', post.title);
+            const body = prompt('Edit body', post.body);
+            if (title !== null && body !== null) {
+              await updatePost(post.id, title, body);
+              await loadPosts(role);
+            }
+          });
+          actionsWrapper.appendChild(editButton);
+        }
+
+        if (role === 'admin') {
+          const deleteButton = document.createElement('button');
+          deleteButton.textContent = 'Delete';
+          deleteButton.style.cssText = 'padding:6px 10px; border:none; border-radius:8px; background:#dc2626; color:white; cursor:pointer;';
+          deleteButton.addEventListener('click', async () => {
+            if (confirm('Delete this post?')) {
+              await deletePost(post.id);
+              await loadPosts(role);
+            }
+          });
+          actionsWrapper.appendChild(deleteButton);
+        }
+
+        li.appendChild(titleEl);
+        li.appendChild(bodyEl);
+        li.appendChild(authorEl);
+        if (actionsWrapper.childElementCount > 0) {
+          li.appendChild(actionsWrapper);
+        }
+        postsList.appendChild(li);
+      });
+    };
+
+    const loadPosts = async (role) => {
+      const postsData = await fetchPosts();
+      renderPosts(postsData.posts, role);
+    };
+
+    const setupCreatePost = (role) => {
+      const createCard = document.getElementById('create-post-card');
+      const createButton = document.getElementById('create-post-button');
+      const titleInput = document.getElementById('post-title');
+      const bodyInput = document.getElementById('post-body');
+      const note = document.getElementById('create-post-note');
+
+      if (role === 'admin') {
+        createCard.style.display = 'block';
+        note.style.display = 'block';
+        createButton.addEventListener('click', async () => {
+          const title = titleInput.value.trim();
+          const body = bodyInput.value.trim();
+          if (!title || !body) {
+            alert('Title and body are required');
+            return;
+          }
+          try {
+            await createPost(title, body);
+            titleInput.value = '';
+            bodyInput.value = '';
+            await loadPosts(role);
+          } catch (err) {
+            setError(err.message);
+          }
+        });
+      } else {
+        createCard.style.display = 'none';
+      }
+    };
+
+    const loadData = async () => {
+      try {
+        const profileData = await fetchProfile();
+        if (!profileData) return;
+        profileInfo.textContent = `Email: ${profileData.user.email}\nRole: ${profileData.user.role}`;
+        roleBadge.textContent = profileData.user.role.toUpperCase();
+
+        const usersData = await fetchUsers();
+        renderUsers(usersData.users);
+        setupCreatePost(profileData.user.role);
+        await loadPosts(profileData.user.role);
+      } catch (err) {
+        setError(err.message);
+      }
+    };
+
+    loadData();
+  </script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+{
+  "name": "exp3-jwt-auth",
+  "version": "1.0.0",
+  "description": "Secure authentication system for EXP 3 using JWT for login and session management",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "keywords": [
+    "jwt",
+    "authentication",
+    "express",
+    "node"
+  ],
+  "author": "Arvin",
+  "license": "MIT",
+  "dependencies": {
+    "bcrypt": "^5.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
